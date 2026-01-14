@@ -12,6 +12,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
   const isLoggingIn = useRef(false);
+  const isLoggingOut = useRef(false);
 
   useEffect(() => {
     // Check initial session
@@ -73,9 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email, 'isLoggingIn:', isLoggingIn.current);
 
-        // Skip if login is handling this
-        if (isLoggingIn.current) {
-          console.log('Skipping onAuthStateChange - login is handling it');
+        // Skip if login or logout is handling this
+        if (isLoggingIn.current || isLoggingOut.current) {
+          console.log('Skipping onAuthStateChange - login/logout is handling it');
           return;
         }
 
@@ -178,11 +179,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    setCurrentUser(null);
-    setUserData(null);
-    localStorage.removeItem('capital21_user');
+    isLoggingOut.current = true;
+    try {
+      localStorage.removeItem('capital21_user');
+      setCurrentUser(null);
+      setUserData(null);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } finally {
+      isLoggingOut.current = false;
+    }
   };
 
   const resetPassword = async (email: string) => {
