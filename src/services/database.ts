@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseDb as supabase } from '@/lib/supabase';
 import type {
   LocalUser,
   BridgeCustomer,
