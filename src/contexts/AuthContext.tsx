@@ -20,19 +20,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // First check localStorage for stored user
         const storedUser = localStorage.getItem('capital21_user');
-        if (storedUser) {
-          try {
-            const user: LocalUser = JSON.parse(storedUser);
-            setCurrentUser({ email: user.email });
-            setUserData(user);
-            console.log('User restored from localStorage:', user.email);
-          } catch (e) {
-            console.error('Error parsing stored user:', e);
-            localStorage.removeItem('capital21_user');
-          }
+
+        // If no stored user, don't try to restore from Supabase
+        // This handles the logout case where localStorage was cleared
+        if (!storedUser) {
+          console.log('No stored user in localStorage, skipping session restore');
+          setLoading(false);
+          return;
         }
 
-        // Also check Supabase session
+        try {
+          const user: LocalUser = JSON.parse(storedUser);
+          setCurrentUser({ email: user.email });
+          setUserData(user);
+          console.log('User restored from localStorage:', user.email);
+        } catch (e) {
+          console.error('Error parsing stored user:', e);
+          localStorage.removeItem('capital21_user');
+          setLoading(false);
+          return;
+        }
+
+        // Validate with Supabase session and refresh user data
         const { data: { session } } = await supabase.auth.getSession();
         console.log('Initial session check:', session?.user?.email);
 
@@ -47,19 +56,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               localStorage.removeItem('capital21_user');
               setCurrentUser(null);
               setUserData(null);
-            } else {
-              setCurrentUser({ email: session.user.email });
-              setUserData(user);
+            } else if (user) {
               // Update localStorage with fresh data
-              if (user) {
-                localStorage.setItem('capital21_user', JSON.stringify(user));
-              }
+              setUserData(user);
+              localStorage.setItem('capital21_user', JSON.stringify(user));
             }
           } catch (e) {
             console.error('Error fetching user in checkSession:', e);
             // Keep localStorage data if fetch fails
-            setCurrentUser({ email: session.user.email });
           }
+        } else {
+          // No Supabase session but we have localStorage - clear it
+          console.log('No Supabase session, clearing localStorage');
+          localStorage.removeItem('capital21_user');
+          setCurrentUser(null);
+          setUserData(null);
         }
       } catch (e) {
         console.error('Error checking session:', e);

@@ -31,19 +31,23 @@ export default function LoginPage() {
   useEffect(() => {
     const checkExistingSession = async () => {
       const storedUser = localStorage.getItem('capital21_user');
-      if (storedUser) {
-        try {
-          const user = JSON.parse(storedUser);
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            router.push(getRedirectPath(user.role));
-            return;
-          } else {
-            localStorage.removeItem('capital21_user');
-          }
-        } catch (e) {
+      // If no stored user, show login form immediately (user logged out or never logged in)
+      if (!storedUser) {
+        setCheckingStorage(false);
+        return;
+      }
+
+      try {
+        const user = JSON.parse(storedUser);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          router.push(getRedirectPath(user.role));
+          return;
+        } else {
           localStorage.removeItem('capital21_user');
         }
+      } catch (e) {
+        localStorage.removeItem('capital21_user');
       }
       setCheckingStorage(false);
     };
