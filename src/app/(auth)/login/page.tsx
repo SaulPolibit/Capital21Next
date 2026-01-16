@@ -39,14 +39,24 @@ export default function LoginPage() {
 
       try {
         const user = JSON.parse(storedUser);
-        const { data: { session } } = await supabase.auth.getSession();
+
+        // Add timeout to prevent hanging
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Session check timeout')), 3000)
+        );
+
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as { data: { session: unknown } };
+
         if (session) {
           router.push(getRedirectPath(user.role));
-          return;
+          // Don't return - let checkingStorage be set to false
+          // The redirect will happen, but user sees login briefly if slow
         } else {
           localStorage.removeItem('capital21_user');
         }
       } catch (e) {
+        console.error('Session check error:', e);
         localStorage.removeItem('capital21_user');
       }
       setCheckingStorage(false);
