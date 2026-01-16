@@ -155,8 +155,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Auth successful for:', email);
 
-      // Fetch user data from database
-      const user = await getUserByEmail(email);
+      // Fetch user data from database with timeout
+      console.log('Fetching user data from database...');
+      const userPromise = getUserByEmail(email);
+      const timeoutPromise = new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('Database query timeout')), 5000)
+      );
+
+      let user: LocalUser | null;
+      try {
+        user = await Promise.race([userPromise, timeoutPromise]);
+      } catch (dbError) {
+        console.error('Database error fetching user:', dbError);
+        throw new Error('Error al conectar con la base de datos');
+      }
       console.log('User data fetched:', user);
 
       if (!user) {

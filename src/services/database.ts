@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseDb } from '@/lib/supabase';
 import type {
   LocalUser,
   BridgeCustomer,
@@ -10,8 +10,9 @@ import type {
 // LOCAL USERS
 // ============================================
 
+// Local users - use supabaseDb (no session dependency, avoids RLS issues during login)
 export async function getUserByEmail(email: string): Promise<LocalUser | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('local_users')
     .select('*')
     .eq('email', email)
@@ -26,7 +27,7 @@ export async function getUserByEmail(email: string): Promise<LocalUser | null> {
 }
 
 export async function getUserById(id: string): Promise<LocalUser | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('local_users')
     .select('*')
     .eq('id', id)
@@ -41,7 +42,7 @@ export async function getUserById(id: string): Promise<LocalUser | null> {
 }
 
 export async function createUser(user: Omit<LocalUser, 'id' | 'created_time' | 'updated_at'>): Promise<LocalUser | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('local_users')
     .insert(user)
     .select()
@@ -56,7 +57,7 @@ export async function createUser(user: Omit<LocalUser, 'id' | 'created_time' | '
 }
 
 export async function updateUser(id: string, updates: Partial<LocalUser>): Promise<LocalUser | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('local_users')
     .update(updates)
     .eq('id', id)
@@ -75,8 +76,9 @@ export async function updateUser(id: string, updates: Partial<LocalUser>): Promi
 // BRIDGE CUSTOMERS
 // ============================================
 
+// Bridge customers - use supabaseDb (no RLS dependency)
 export async function getCustomersByUserId(userId: string): Promise<BridgeCustomer[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('bridge_customers')
     .select('*')
     .eq('user_id', userId)
@@ -91,7 +93,7 @@ export async function getCustomersByUserId(userId: string): Promise<BridgeCustom
 }
 
 export async function getCustomerByEmail(email: string): Promise<BridgeCustomer | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('bridge_customers')
     .select('*')
     .eq('email', email)
@@ -106,7 +108,7 @@ export async function getCustomerByEmail(email: string): Promise<BridgeCustomer 
 }
 
 export async function getCustomerById(id: string): Promise<BridgeCustomer | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('bridge_customers')
     .select('*')
     .eq('id', id)
@@ -121,7 +123,7 @@ export async function getCustomerById(id: string): Promise<BridgeCustomer | null
 }
 
 export async function createCustomer(customer: Omit<BridgeCustomer, 'id' | 'created_at' | 'updated_at'>): Promise<BridgeCustomer | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('bridge_customers')
     .insert(customer)
     .select()
@@ -136,7 +138,7 @@ export async function createCustomer(customer: Omit<BridgeCustomer, 'id' | 'crea
 }
 
 export async function updateCustomer(id: string, updates: Partial<BridgeCustomer>): Promise<BridgeCustomer | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('bridge_customers')
     .update(updates)
     .eq('id', id)
@@ -155,8 +157,9 @@ export async function updateCustomer(id: string, updates: Partial<BridgeCustomer
 // EXTERNAL ACCOUNTS
 // ============================================
 
+// External accounts - use supabaseDb (no RLS dependency)
 export async function getExternalAccountsByCustomerId(customerId: string): Promise<ExternalAccount[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('external_accounts')
     .select('*')
     .eq('customer_id', customerId)
@@ -171,7 +174,7 @@ export async function getExternalAccountsByCustomerId(customerId: string): Promi
 }
 
 export async function getExternalAccountsByUserId(userId: string): Promise<ExternalAccount[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('external_accounts')
     .select('*')
     .eq('user_id', userId)
@@ -186,7 +189,7 @@ export async function getExternalAccountsByUserId(userId: string): Promise<Exter
 }
 
 export async function getExternalAccountById(id: string): Promise<ExternalAccount | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('external_accounts')
     .select('*')
     .eq('id', id)
@@ -201,7 +204,7 @@ export async function getExternalAccountById(id: string): Promise<ExternalAccoun
 }
 
 export async function createExternalAccount(account: Omit<ExternalAccount, 'id' | 'created_at' | 'updated_at'>): Promise<ExternalAccount | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('external_accounts')
     .insert(account)
     .select()
@@ -216,7 +219,7 @@ export async function createExternalAccount(account: Omit<ExternalAccount, 'id' 
 }
 
 export async function updateExternalAccount(id: string, updates: Partial<ExternalAccount>): Promise<ExternalAccount | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseDb
     .from('external_accounts')
     .update(updates)
     .eq('id', id)
@@ -232,7 +235,7 @@ export async function updateExternalAccount(id: string, updates: Partial<Externa
 }
 
 export async function deleteExternalAccount(id: string): Promise<boolean> {
-  const { error } = await supabase
+  const { error } = await supabaseDb
     .from('external_accounts')
     .delete()
     .eq('id', id);
@@ -249,6 +252,7 @@ export async function deleteExternalAccount(id: string): Promise<boolean> {
 // BRIDGE TRANSACTIONS
 // ============================================
 
+// Bridge transactions - use supabase (with session) for RLS filtering by user_id
 export async function getTransactionsByUserId(userId: string): Promise<BridgeTransaction[]> {
   const { data, error } = await supabase
     .from('bridge_transactions')
