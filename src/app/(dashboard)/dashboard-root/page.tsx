@@ -347,10 +347,10 @@ export default function RootDashboardPage() {
                   sortedTransactions.map((tx) => (
                     <tr key={tx.id} className="border-b border-gray-200">
                       <td className="px-4 py-3 text-gray-600">
-                        {tx.bridge_transaction_id?.slice(0, 8) || '[id]'}
+                        {tx.bridge_transaction_id ?? '[id]'}
                       </td>
                       <td className="px-4 py-3 text-gray-600">
-                        {tx.destination_external_account_id?.slice(0, 12) || '[destination]'}
+                        {tx.destination_external_account_id ?? '[destination]'}
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         $ {tx.developer_fee || '0'}

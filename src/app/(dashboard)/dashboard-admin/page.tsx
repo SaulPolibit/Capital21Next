@@ -15,8 +15,9 @@ export default function AdminDashboardPage() {
 
   // Client info from env
   const clientName = process.env.NEXT_PUBLIC_COMPANY_NAME || 'Master South America, LLC';
-  const clientId = process.env.BRIDGE_CLIENT_ID || '';
-  const feePercent = process.env.TRANSACTION_FEE_PERCENT || '0';
+  const clientId = process.env.NEXT_PUBLIC_BRIDGE_CLIENT_ID || '';
+  const externalAccountID = process.env.NEXT_PUBLIC_BRIDGE_EXTERNAL_ACCOUNT_ID || '';
+  const feePercent = process.env.NEXT_PUBLIC_TRANSACTION_FEE_PERCENT || '0';
 
   useEffect(() => {
     if (userData && !isAdmin) {
@@ -109,12 +110,16 @@ export default function AdminDashboardPage() {
               <span className="text-gray-900">{clientName}</span>
             </div>
             <div className="flex gap-2">
-              <span className="text-gray-600">ID:</span>
+              <span className="text-gray-600">Client ID:</span>
               <span className="text-gray-900">{clientId || '[client_id]'}</span>
             </div>
             <div className="flex gap-2">
+              <span className="text-gray-600">External Account ID:</span>
+              <span className="text-gray-900">{externalAccountID || '[External_Account]'}</span>
+            </div>
+            <div className="flex gap-2">
               <span className="text-gray-600">Fee:</span>
-              <span className="text-gray-900">[{(parseFloat(feePercent) * 100).toFixed(1)}%]</span>
+              <span className="text-gray-900">{(parseFloat(feePercent) * 100).toFixed(1)}%</span>
             </div>
           </div>
         </div>
@@ -145,10 +150,10 @@ export default function AdminDashboardPage() {
                   transactions.map((tx) => (
                     <tr key={tx.id} className="border-b border-gray-200">
                       <td className="px-4 py-3 text-gray-600">
-                        {tx.bridge_transaction_id?.slice(0, 8) || '[id]'}
+                        {tx.bridge_transaction_id ?? '[id]'}
                       </td>
                       <td className="px-4 py-3 text-gray-600">
-                        {tx.destination_external_account_id?.slice(0, 12) || '[destinationExternalAccountId]'}
+                        {tx.destination_external_account_id ?? '[destinationExternalAccountId]'}
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         $ {tx.developer_fee || '[developerFee]'}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BRIDGE_API_URL = process.env.BRIDGE_API_URL || 'https://api.bridge.xyz/v0';
-const BRIDGE_API_KEY = process.env.BRIDGE_API_KEY;
+const BRIDGE_API_URL = process.env.NEXT_BRIDGE_API_URL || 'https://api.bridge.xyz/v0';
+const BRIDGE_API_KEY = process.env.NEXT_BRIDGE_API_KEY;
 
 // GET - Get customers
 export async function GET(request: NextRequest) {
