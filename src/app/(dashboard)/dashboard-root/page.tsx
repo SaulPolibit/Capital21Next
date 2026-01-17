@@ -220,13 +220,14 @@ export default function RootDashboardPage() {
   };
 
   const exportTransactionsToCSV = () => {
-    const headers = ['Transaction ID', 'Destination', 'Fee', 'Amount', 'State'];
+    const headers = ['Source Address', 'Destination Address', 'Fee', 'Amount', 'State', 'Created At'];
     const rows = sortedTransactions.map(tx => [
-      tx.bridge_transaction_id || '',
+      tx.source_from_address || '',
       tx.destination_external_account_id || '',
       tx.developer_fee || '',
       tx.amount || '',
       tx.state || '',
+      tx.created_at || '',
     ]);
 
     const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -329,40 +330,80 @@ export default function RootDashboardPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-[#5a6672] text-white">
-                  <th className="px-4 py-3 text-left font-semibold">Transaction ID</th>
-                  <th className="px-4 py-3 text-left font-semibold">Destination</th>
+                  <th className="px-4 py-3 text-left font-semibold">Source Address</th>
+                  <th className="px-4 py-3 text-left font-semibold">Destination Address</th>
                   <th className="px-4 py-3 text-left font-semibold">Fee</th>
                   <th className="px-4 py-3 text-left font-semibold">Amount</th>
                   <th className="px-4 py-3 text-left font-semibold">State</th>
+                  <th className="px-4 py-3 text-left font-semibold">Created At</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                       No transactions yet
                     </td>
                   </tr>
                 ) : (
-                  sortedTransactions.map((tx) => (
-                    <tr key={tx.id} className="border-b border-gray-200">
-                      <td className="px-4 py-3 text-gray-600">
-                        {tx.bridge_transaction_id ?? '[id]'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {tx.destination_external_account_id ?? '[destination]'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        $ {tx.developer_fee || '0'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        $ {tx.amount || '0'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {tx.state || '[state]'}
-                      </td>
-                    </tr>
-                  ))
+                  sortedTransactions.map((tx) => {
+                    const getStatusStyle = (state: string) => {
+                      switch (state) {
+                        case 'completed':
+                          return 'bg-green-100 text-green-800';
+                        case 'pending':
+                        case 'awaiting_funds':
+                        case 'in_review':
+                          return 'bg-yellow-100 text-yellow-800';
+                        case 'funds_received':
+                        case 'payment_submitted':
+                        case 'payment_processed':
+                          return 'bg-blue-100 text-blue-800';
+                        case 'error':
+                        case 'returned':
+                        case 'canceled':
+                          return 'bg-red-100 text-red-800';
+                        default:
+                          return 'bg-gray-100 text-gray-800';
+                      }
+                    };
+
+                    const formatRelativeTime = (dateString?: string) => {
+                      if (!dateString) return '-';
+                      const date = new Date(dateString);
+                      const now = new Date();
+                      const diffMs = now.getTime() - date.getTime();
+                      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                      if (diffDays === 0) return 'Today';
+                      if (diffDays === 1) return 'Yesterday';
+                      return `${diffDays} days ago`;
+                    };
+
+                    return (
+                      <tr key={tx.id} className="border-b border-gray-200">
+                        <td className="px-4 py-3 text-gray-600">
+                          {tx.source_from_address ?? '-'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {tx.destination_external_account_id ?? '[destinationExternalAccountId]'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          $ {tx.developer_fee || '[developerFee]'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          $ {tx.amount || '[amount]'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(tx.state)}`}>
+                            {tx.state.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-sm">
+                          {formatRelativeTime(tx.created_at)}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
