@@ -37,6 +37,7 @@ export default function DashboardPage() {
 
   // Payment Generation state
   const [amount, setAmount] = useState('');
+  const [sourceAddress, setSourceAddress] = useState('');
   const feePercent = parseFloat(process.env.NEXT_PUBLIC_TRANSACTION_FEE_PERCENT || '0.019');
 
   // Environment variables for Bridge
@@ -108,6 +109,9 @@ export default function DashboardPage() {
       toast.success(`Wallet connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`);
       setShowWalletModal(false);
 
+      // Load connected address to source address input
+      setSourceAddress(connectedAddress);
+
       // Check if on Arbitrum, if not prompt to switch
       if (chainId !== ARBITRUM_CHAIN_ID) {
         const switched = await switchToArbitrum();
@@ -136,9 +140,16 @@ export default function DashboardPage() {
   };
 
   const handleGeneratePaymentLink = async () => {
-    // Validate wallet connection
-    if (!isConnected || !address) {
-      toast.error('Please connect your wallet first');
+    // Validate source address
+    if (!sourceAddress) {
+      toast.error('Please enter a source address');
+      return;
+    }
+
+    // Validate source address format
+    const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(sourceAddress);
+    if (!isValidAddress) {
+      toast.error('Please enter a valid Ethereum address');
       return;
     }
 
@@ -194,7 +205,7 @@ export default function DashboardPage() {
         source: {
           currency: 'usdc',
           payment_rail: 'arbitrum',
-          from_address: address,
+          from_address: sourceAddress,
         },
         destination: {
           currency: 'usd',
@@ -482,6 +493,16 @@ export default function DashboardPage() {
             <div className="flex items-center gap-4">
               <span className="text-gray-700 w-32">Blockchain:</span>
               <span className="text-gray-900">Arbitrum</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-gray-700 w-32">Source Address:</span>
+              <input
+                type="text"
+                placeholder="0x..."
+                value={sourceAddress}
+                onChange={(e) => setSourceAddress(e.target.value)}
+                className="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:border-[#c9a227]"
+              />
             </div>
             <div className="flex items-center gap-4">
               <span className="text-gray-700 w-32">Amount to send:</span>
