@@ -454,7 +454,7 @@ export default function DashboardPage() {
                   transactions.map((tx) => (
                     <tr key={tx.id} className="border-b border-gray-200">
                       <td className="px-4 py-3 text-gray-600">
-                        {tx.source_from_address || '[sourceFromAddress]'}
+                        {tx.source_from_address || 'Any'}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
