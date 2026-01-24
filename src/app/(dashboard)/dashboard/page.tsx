@@ -38,6 +38,7 @@ export default function DashboardPage() {
   // Payment Generation state
   const [amount, setAmount] = useState('');
   const [sourceAddress, setSourceAddress] = useState('');
+  const [isExchangePayment, setIsExchangePayment] = useState(false);
   const feePercent = parseFloat(process.env.NEXT_PUBLIC_TRANSACTION_FEE_PERCENT || '0.019');
 
   // Environment variables for Bridge
@@ -109,8 +110,10 @@ export default function DashboardPage() {
       toast.success(`Wallet connected: ${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`);
       setShowWalletModal(false);
 
-      // Load connected address to source address input
-      setSourceAddress(connectedAddress);
+      // Load connected address to source address input ONLY for regular transactions
+      if (!isExchangePayment) {
+        setSourceAddress(connectedAddress);
+      }
 
       // Check if on Arbitrum, if not prompt to switch
       if (chainId !== ARBITRUM_CHAIN_ID) {
@@ -140,24 +143,26 @@ export default function DashboardPage() {
   };
 
   const handleGeneratePaymentLink = async () => {
-    // Validate source address
-    if (!sourceAddress) {
-      toast.error('Please enter a source address');
-      return;
-    }
-
-    // Validate source address format
-    const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(sourceAddress);
-    if (!isValidAddress) {
-      toast.error('Please enter a valid Ethereum address');
-      return;
-    }
-
-    // Validate amount
+    // Validate amount (required for both exchange and regular transactions)
     const amountValue = parseFloat(amount);
     if (!amount || isNaN(amountValue) || amountValue <= 0) {
       toast.error('Please enter a valid amount');
       return;
+    }
+
+    // Validate source address ONLY for regular (non-exchange) transactions
+    if (!isExchangePayment) {
+      if (!sourceAddress) {
+        toast.error('Please enter a source address');
+        return;
+      }
+
+      // Validate source address format
+      const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(sourceAddress);
+      if (!isValidAddress) {
+        toast.error('Please enter a valid Ethereum address');
+        return;
+      }
     }
 
     // Validate environment variables
@@ -171,8 +176,8 @@ export default function DashboardPage() {
       return;
     }
 
-    // Check if on Arbitrum network
-    if (chainId !== ARBITRUM_CHAIN_ID) {
+    // Check if on Arbitrum network (only for regular transactions)
+    if (!isExchangePayment && chainId !== ARBITRUM_CHAIN_ID) {
       toast.error('Please switch to Arbitrum network');
       const switched = await switchToArbitrum();
       if (!switched) {
@@ -198,31 +203,60 @@ export default function DashboardPage() {
       // Generate idempotency key
       const idempotencyKey = getUUID();
 
-      // Create transaction request
-      const result = await bridgeApi.createTransaction({
-        idempotency_key: idempotencyKey,
-        on_behalf_of: BRIDGE_CLIENT_ID,
-        source: {
-          currency: 'usdc',
-          payment_rail: 'arbitrum',
-          from_address: sourceAddress,
-        },
-        destination: {
-          currency: 'usd',
-          payment_rail: 'ach',
-          external_account_id: BRIDGE_EXTERNAL_ACCOUNT_ID,
-        },
-        developer_fee: feeAmount,
-        amount: total,
-        user_id: user.id,
-      });
+      let result;
+
+      if (isExchangePayment) {
+        // Create EXCHANGE transaction (no from_address required)
+        result = await bridgeApi.createExchangeTransaction({
+          idempotency_key: idempotencyKey,
+          on_behalf_of: BRIDGE_CLIENT_ID,
+          source: {
+            currency: 'usdc',
+            payment_rail: 'arbitrum',
+          },
+          destination: {
+            currency: 'usd',
+            payment_rail: 'ach',
+            external_account_id: BRIDGE_EXTERNAL_ACCOUNT_ID,
+          },
+          developer_fee: feeAmount,
+          amount: total,
+          user_id: user.id,
+        });
+      } else {
+        // Create REGULAR transaction (from_address required)
+        result = await bridgeApi.createTransaction({
+          idempotency_key: idempotencyKey,
+          on_behalf_of: BRIDGE_CLIENT_ID,
+          source: {
+            currency: 'usdc',
+            payment_rail: 'arbitrum',
+            from_address: sourceAddress,
+          },
+          destination: {
+            currency: 'usd',
+            payment_rail: 'ach',
+            external_account_id: BRIDGE_EXTERNAL_ACCOUNT_ID,
+          },
+          developer_fee: feeAmount,
+          amount: total,
+          user_id: user.id,
+        });
+      }
 
       if (result.success && result.data) {
-        toast.success('Payment link generated successfully!');
+        toast.success(
+          isExchangePayment
+            ? 'Exchange payment link generated successfully!'
+            : 'Payment link generated successfully!'
+        );
         // Refresh transactions list
         await fetchData();
-        // Clear amount
+        // Clear amount and source address
         setAmount('');
+        if (!isExchangePayment) {
+          setSourceAddress('');
+        }
       } else {
         toast.error(result.error || 'Failed to generate payment link');
       }
@@ -487,6 +521,24 @@ export default function DashboardPage() {
 
           <div className="space-y-3">
             <div className="flex items-center gap-4">
+              <span className="text-gray-700 w-32">Payment Type:</span>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isExchangePayment}
+                  onChange={(e) => {
+                    setIsExchangePayment(e.target.checked);
+                    // Clear source address when switching to exchange payment
+                    if (e.target.checked) {
+                      setSourceAddress('');
+                    }
+                  }}
+                  className="w-4 h-4 text-[#c9a227] border-gray-300 rounded focus:ring-[#c9a227] cursor-pointer"
+                />
+                <span className="text-gray-900">Exchange Payment (accept from any address)</span>
+              </label>
+            </div>
+            <div className="flex items-center gap-4">
               <span className="text-gray-700 w-32">Currency:</span>
               <span className="text-gray-900">USDC</span>
             </div>
@@ -494,16 +546,18 @@ export default function DashboardPage() {
               <span className="text-gray-700 w-32">Blockchain:</span>
               <span className="text-gray-900">Arbitrum</span>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-gray-700 w-32">Source Address:</span>
-              <input
-                type="text"
-                placeholder="0x..."
-                value={sourceAddress}
-                onChange={(e) => setSourceAddress(e.target.value)}
-                className="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:border-[#c9a227]"
-              />
-            </div>
+            {!isExchangePayment && (
+              <div className="flex items-center gap-4">
+                <span className="text-gray-700 w-32">Source Address:</span>
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  value={sourceAddress}
+                  onChange={(e) => setSourceAddress(e.target.value)}
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:border-[#c9a227]"
+                />
+              </div>
+            )}
             <div className="flex items-center gap-4">
               <span className="text-gray-700 w-32">Amount to send:</span>
               <div className="flex items-center gap-1">

@@ -157,6 +157,24 @@ export interface CreateTransactionRequest {
   user_id: string;
 }
 
+export interface CreateExchangeTransactionRequest {
+  on_behalf_of: string;
+  source: {
+    currency: string;
+    payment_rail: string;
+  };
+  destination: {
+    currency: string;
+    payment_rail: string;
+    external_account_id: string;
+  };
+  amount: number | string;
+  developer_fee?: number | string;
+  idempotency_key?: string;
+  user_id: string;
+  exchange_type?: 'crypto_to_fiat' | 'fiat_to_crypto';
+}
+
 // ============================================
 // API CALL RESULT TYPE
 // ============================================
@@ -458,6 +476,85 @@ class BridgeApiClient {
       return { success: true, data: data.data || data };
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+      };
+    }
+  }
+
+  // CREATE Exchange Transaction
+  // Exchange transactions allow crypto from any wallet (allow_any_from_address feature)
+  // No need to specify from_address in source
+  async createExchangeTransaction(request: CreateExchangeTransactionRequest): Promise<ApiCallResult<TransactionResponse>> {
+    try {
+      const { idempotency_key, ...payload } = request;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      if (idempotency_key) {
+        headers['Idempotency-Key'] = idempotency_key;
+      }
+
+      const response = await fetch(`${this.baseUrl}/exchange-transactions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || 'Failed to create exchange transaction',
+          status: response.status,
+        };
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error creating exchange transaction:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+      };
+    }
+  }
+
+  // GET Exchange Transactions
+  async getExchangeTransactions(userId?: string, transactionId?: string): Promise<ApiCallResult<TransactionResponse | TransactionResponse[]>> {
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.append('user_id', userId);
+      if (transactionId) params.append('transaction_id', transactionId);
+
+      const url = params.toString()
+        ? `${this.baseUrl}/exchange-transactions?${params.toString()}`
+        : `${this.baseUrl}/exchange-transactions`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || 'Failed to fetch exchange transactions',
+          status: response.status,
+        };
+      }
+
+      return { success: true, data: data.data || data };
+    } catch (error) {
+      console.error('Error fetching exchange transactions:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
