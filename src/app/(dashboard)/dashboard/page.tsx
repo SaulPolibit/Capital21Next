@@ -337,15 +337,25 @@ export default function DashboardPage() {
       return;
     }
 
-    // Validate source address matches connected wallet
-    if (!tx.source_from_address) {
-      toast.error('No source address available for this transaction');
-      return;
+    // Check if this is an exchange transaction
+    const isExchangeTx = tx.transaction_type === 'exchange' || !tx.source_from_address;
+
+    // For REGULAR transactions: validate source address matches connected wallet
+    if (!isExchangeTx) {
+      if (!tx.source_from_address) {
+        toast.error('No source address available for this transaction');
+        return;
+      }
+
+      if (address.toLowerCase() !== tx.source_from_address.toLowerCase()) {
+        toast.error(`Please connect the wallet: ${tx.source_from_address.slice(0, 6)}...${tx.source_from_address.slice(-4)}`);
+        return;
+      }
     }
 
-    if (address.toLowerCase() !== tx.source_from_address.toLowerCase()) {
-      toast.error(`Please connect the wallet: ${tx.source_from_address.slice(0, 6)}...${tx.source_from_address.slice(-4)}`);
-      return;
+    // For EXCHANGE transactions: any wallet can pay
+    if (isExchangeTx) {
+      toast.info(`Exchange transaction - paying from your wallet: ${address.slice(0, 6)}...${address.slice(-4)}`);
     }
 
     // Validate destination address
@@ -451,10 +461,21 @@ export default function DashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  transactions.map((tx) => (
+                  transactions.map((tx) => {
+                    const isExchangeTx = tx.transaction_type === 'exchange' || !tx.source_from_address;
+                    return (
                     <tr key={tx.id} className="border-b border-gray-200">
-                      <td className="px-4 py-3 text-gray-600">
-                        {tx.source_from_address || 'Any'}
+                      <td className="px-4 py-3">
+                        {isExchangeTx ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600">Any Address</span>
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                              Exchange
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-600">{tx.source_from_address}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -508,7 +529,8 @@ export default function DashboardPage() {
                         </button>
                       </td>
                     </tr>
-                  ))
+                  );
+                  })
                 )}
               </tbody>
             </table>

@@ -61,6 +61,8 @@ export interface BridgeTransaction {
   source_from_address?: string;
   source_to_address?: string;
   user_id: string;
+  transaction_type?: 'regular' | 'exchange';
+  exchange_type?: 'crypto_to_fiat' | 'fiat_to_crypto';
 }
 
 export type TransactionState =
